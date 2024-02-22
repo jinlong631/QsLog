@@ -1,4 +1,4 @@
-// Copyright (c) 2013, Razvan Petru
+﻿// Copyright (c) 2013, Razvan Petru
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without modification,
@@ -31,6 +31,8 @@
 #include <QtGlobal>
 #include <iostream>
 #include <QtDebug>
+#include <QFileInfo>
+#include <QDir>
 
 #if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
 namespace Qt {
@@ -132,6 +134,11 @@ QsLogging::FileDestination::FileDestination(const QString& filePath, RotationStr
     : mRotationStrategy(rotationStrategy)
 {
     mFile.setFileName(filePath);
+    QString fileDir = QFileInfo(filePath).absolutePath();
+    QDir dir(fileDir);
+    if(!dir.exists()) {
+        dir.mkdir(fileDir);
+    }
     if (!mFile.open(QFile::WriteOnly | QFile::Text | mRotationStrategy->recommendedOpenModeFlag()))
         std::cerr << "QsLog: could not open log file " << qPrintable(filePath);
     mOutputStream.setDevice(&mFile);
@@ -252,6 +259,11 @@ QsLogging::DailyFileDestination::DailyFileDestination(const QString& filePath, R
 
     QString fileName = mRotationStrategy_->getFileName();
     mFile.setFileName(fileName);
+    QString fileDir = QFileInfo(fileName).absolutePath();
+    QDir dir(fileDir);
+    if(!dir.exists()) {
+        dir.mkdir(fileDir);
+    }
     if (!mFile.open(QFile::WriteOnly | QFile::Text))
         std::cerr << "QsLog: could not open log file " << qPrintable(filePath);
     mOutputStream.setDevice(&mFile);
