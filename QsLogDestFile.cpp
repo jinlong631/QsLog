@@ -30,6 +30,7 @@
 #include <QDateTime>
 #include <QtGlobal>
 #include <iostream>
+#include <QtDebug>
 
 #if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
 namespace Qt {
@@ -163,3 +164,122 @@ bool QsLogging::FileDestination::isValid()
     return mFile.isOpen();
 }
 
+QsLogging::DailyRotationStrategy::DailyRotationStrategy():
+    rotation_hour_(0),
+    rotation_minute_(0)
+{
+
+}
+
+void QsLogging::DailyRotationStrategy::setInitialInfo(const QFile &file)
+{
+    mFileName = file.fileName();
+    rotation_tp_ = next_rotation_tp(rotation_hour_,rotation_minute_);
+}
+
+void QsLogging::DailyRotationStrategy::includeMessageInCalculation(const QString &message)
+{
+
+}
+
+bool QsLogging::DailyRotationStrategy::shouldRotate()
+{
+    QDateTime nowTime = QDateTime::currentDateTime();
+//    qDebug()<<nowTime.toString("yyyy-MM-dd HH:mm");
+//    qDebug()<<rotation_tp_.toString("yyyy-MM-dd HH:mm");
+    if(nowTime > rotation_tp_ ){
+        rotation_tp_ = next_rotation_tp(rotation_hour_,rotation_minute_);
+        return true;
+    }
+    return false;
+}
+
+void QsLogging::DailyRotationStrategy::rotate()
+{
+
+}
+
+QString QsLogging::DailyRotationStrategy::getFileName()
+{
+    QDateTime nowdt = QDateTime::currentDateTime();
+    QString fileName = DailyRotationStrategy::calc_filename(mFileName, nowdt);
+    return fileName;
+}
+
+QIODevice::OpenMode QsLogging::DailyRotationStrategy::recommendedOpenModeFlag()
+{
+    return QIODevice::Append;
+}
+
+void QsLogging::DailyRotationStrategy::setRotation_hour(int newRotation_hour)
+{
+    rotation_hour_ = newRotation_hour;
+}
+
+void QsLogging::DailyRotationStrategy::setRotation_minute(int newRotation_minute)
+{
+    rotation_minute_ = newRotation_minute;
+}
+
+QString QsLogging::DailyRotationStrategy::calc_filename(const QString fileName, QDateTime dt)
+{
+    QStringList fileNamesplit = fileName.split(".");
+    if(fileNamesplit.length()<2)
+        fileNamesplit.append("");
+    int year = dt.date().year();
+    int month = dt.date().month();
+    int day = dt.date().day();
+    QString retFileName = QString("%1_%2_%3_%4.%5").arg(fileNamesplit.at(0)).arg(year).arg(month).arg(day).arg(fileNamesplit.at(1));
+    return retFileName;
+}
+
+QDateTime QsLogging::DailyRotationStrategy::next_rotation_tp(int rotation_hour, int rotation_minute)
+{
+    QDateTime nowdt = QDateTime::currentDateTime();
+//    qDebug()<<nowdt.toString("yyyy-MM-dd HH:mm");
+    QTime rotationTime;
+    rotationTime.setHMS(rotation_hour,rotation_minute,0);
+    nowdt.setTime(rotationTime);
+    nowdt = nowdt.addDays(1);
+//    qDebug()<<nowdt.toString("yyyy-MM-dd HH:mm");
+    return nowdt;
+}
+
+QsLogging::DailyFileDestination::DailyFileDestination(const QString& filePath, RotationStrategyPtr rotationStrategy)
+    : mRotationStrategy_(rotationStrategy)
+{
+    mRotationStrategy_->setInitialInfo(QFile(filePath));
+
+    QString fileName = mRotationStrategy_->getFileName();
+    mFile.setFileName(fileName);
+    if (!mFile.open(QFile::WriteOnly | QFile::Text))
+        std::cerr << "QsLog: could not open log file " << qPrintable(filePath);
+    mOutputStream.setDevice(&mFile);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    mOutputStream.setCodec(QTextCodec::codecForName("UTF-8"));
+#endif
+}
+
+void QsLogging::DailyFileDestination::write(const QString &message, Level level)
+{
+//    mRotationStrategy->includeMessageInCalculation(message);
+    if (mRotationStrategy_->shouldRotate()) {
+        mOutputStream.setDevice(NULL);
+        mFile.close();
+        mRotationStrategy_->rotate();
+        QString fileName = mRotationStrategy_->getFileName();
+        mFile.setFileName(fileName);
+        if (!mFile.open(QFile::WriteOnly | QFile::Text | mRotationStrategy_->recommendedOpenModeFlag()))
+            std::cerr << "QsLog: could not reopen log file " << qPrintable(mFile.fileName());
+//        mRotationStrategy->setInitialInfo(mFile);
+        mOutputStream.setDevice(&mFile);
+    }
+
+    mOutputStream << message << Qt::endl;
+    mOutputStream.flush();
+}
+
+bool QsLogging::DailyFileDestination::isValid()
+{
+    return mFile.isOpen();
+}

@@ -31,6 +31,7 @@
 #include <QTextStream>
 #include <QtGlobal>
 #include <QSharedPointer>
+#include <QDateTime>
 
 namespace QsLogging
 {
@@ -43,6 +44,7 @@ public:
     virtual void includeMessageInCalculation(const QString &message) = 0;
     virtual bool shouldRotate() = 0;
     virtual void rotate() = 0;
+    virtual QString getFileName() = 0;
     virtual QIODevice::OpenMode recommendedOpenModeFlag() = 0;
 };
 
@@ -54,6 +56,7 @@ public:
     void includeMessageInCalculation(const QString &) override {}
     bool shouldRotate() override { return false; }
     void rotate() override {}
+    QString getFileName() override { return "";}
     QIODevice::OpenMode recommendedOpenModeFlag() override { return QIODevice::Truncate; }
 };
 
@@ -68,6 +71,7 @@ public:
     void includeMessageInCalculation(const QString &message) override;
     bool shouldRotate() override;
     void rotate() override;
+    QString getFileName() override { return "";}
     QIODevice::OpenMode recommendedOpenModeFlag() override;
 
     void setMaximumSizeInBytes(qint64 size);
@@ -79,7 +83,29 @@ private:
     qint64 mMaxSizeInBytes;
     int mBackupsCount;
 };
+class DailyRotationStrategy : public RotationStrategy
+{
+public:
+    DailyRotationStrategy();
+    void setInitialInfo(const QFile &file) override;
+    void includeMessageInCalculation(const QString &message) override;
+    bool shouldRotate() override;
+    void rotate() override;
+    QString getFileName() override;
+    QIODevice::OpenMode recommendedOpenModeFlag() override;
 
+    void setRotation_hour(int newRotation_hour);
+    void setRotation_minute(int newRotation_minute);
+
+    QString calc_filename(const QString fileName, QDateTime dt);
+    QDateTime next_rotation_tp(int rotation_hour,int rotation_minute);
+private:
+    QString mFileName;
+
+    int rotation_hour_;
+    int rotation_minute_;
+    QDateTime rotation_tp_;
+};
 typedef QSharedPointer<RotationStrategy> RotationStrategyPtr;
 
 // file message sink
@@ -95,7 +121,18 @@ private:
     QTextStream mOutputStream;
     QSharedPointer<RotationStrategy> mRotationStrategy;
 };
+class DailyFileDestination : public Destination
+{
+public:
+    DailyFileDestination(const QString& filePath, RotationStrategyPtr rotationStrategy);
+    void write(const QString& message, Level level) override;
+    bool isValid() override;
 
+private:
+    QFile mFile;
+    QTextStream mOutputStream;
+    QSharedPointer<RotationStrategy> mRotationStrategy_;
+};
 }
 
 #endif // QSLOGDESTFILE_H

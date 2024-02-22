@@ -92,6 +92,7 @@ public:
     static DestinationPtr MakeFunctorDestination(Destination::LogFunction f);
     // takes a QObject + signal/slot
     static DestinationPtr MakeFunctorDestination(QObject *receiver, const char *member);
+    static DestinationPtr MakeDailyFileDestination(const QString &filePath, LogRotationOption rotation = DisableLogRotation, const int rotation_hour = 0, const int rotation_minute = 0);
 };
 
 } // end namespace

@@ -51,6 +51,16 @@ DestinationPtr DestinationFactory::MakeFileDestination(const QString& filePath,
 
     return DestinationPtr(new FileDestination(filePath, RotationStrategyPtr(new NullRotationStrategy)));
 }
+DestinationPtr DestinationFactory::MakeDailyFileDestination(const QString &filePath, LogRotationOption rotation, const int rotation_hour, const int rotation_minute)
+{
+    if (EnableLogRotation == rotation) {
+        QScopedPointer<DailyRotationStrategy> logRotation(new DailyRotationStrategy);
+
+        return DestinationPtr(new DailyFileDestination(filePath, RotationStrategyPtr(logRotation.take())));
+    }
+
+    return DestinationPtr(new DailyFileDestination(filePath, RotationStrategyPtr(new NullRotationStrategy)));
+}
 
 DestinationPtr DestinationFactory::MakeDebugOutputDestination()
 {
