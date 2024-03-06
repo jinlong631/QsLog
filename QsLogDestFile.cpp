@@ -204,6 +204,21 @@ bool QsLogging::DailyRotationStrategy::shouldRotate()
 void QsLogging::DailyRotationStrategy::rotate()
 {
 
+    QString fileName = getFileName();
+
+    QString fileDir = QFileInfo(fileName).absolutePath();
+    QString filefilter = QFileInfo(fileName).suffix();
+    QDir dir(fileDir);
+    QStringList filename ;
+    filename << "*."+filefilter;//可叠加，可使用通配符筛选
+    QStringList results;
+    results = dir.entryList(filename,QDir::Files | QDir::Readable,QDir::Time);
+    if(results.length()>29) {
+        for(int i=29;i<results.length();i++)
+        {
+            QFile::remove(results.at(i));
+        }
+    }
 }
 
 QString QsLogging::DailyRotationStrategy::getFileName()
@@ -260,10 +275,24 @@ QsLogging::DailyFileDestination::DailyFileDestination(const QString& filePath, R
     QString fileName = mRotationStrategy_->getFileName();
     mFile.setFileName(fileName);
     QString fileDir = QFileInfo(fileName).absolutePath();
+    QString filefilter = QFileInfo(fileName).suffix();
     QDir dir(fileDir);
     if(!dir.exists()) {
         dir.mkdir(fileDir);
     }
+//    QStringList filename ;
+//    filename << "*."+filefilter;//可叠加，可使用通配符筛选
+//    QStringList results;
+//    results = dir.entryList(filename,QDir::Files | QDir::Readable,QDir::Time);
+//    if(results.length()>30) {
+//        for(int i=30;i<results.length();i++)
+//        {
+//            QFile::remove(results.at(i));
+//        }
+//    }
+    //qDebug()<<results;//results里就是获取的所有文件名了
+
+
     if (!mFile.open(QFile::WriteOnly | QFile::Text))
         std::cerr << "QsLog: could not open log file " << qPrintable(filePath);
     mOutputStream.setDevice(&mFile);
